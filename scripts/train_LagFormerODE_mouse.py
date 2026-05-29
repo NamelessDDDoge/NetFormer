@@ -9,19 +9,16 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from sklearn.metrics import r2_score
-from os import listdir
 
-from NetFormer import data, tools, lagFormer
+from NetFormer import data, tools, lagFormerODE
 
 
 if __name__ == "__main__":
-    # Parse arguments add all hyperparameters to the parser
     parser = argparse.ArgumentParser(description="Model Hyperparameters")
 
     parser.add_argument("--out_folder", help="the output folder")
 
     # Data
-
     parser.add_argument("--input_mouse")
     parser.add_argument("--input_sessions")
 
@@ -30,23 +27,24 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", help="the batch size", type=int, default=32)
 
     # Model
-    
     parser.add_argument("--model_random_seed", default=42)
     parser.add_argument("--learning_rate", help="learning rate", default=1e-4)
 
-    parser.add_argument("--attention_activation", default="none")    # "softmax" or "sigmoid" or "tanh" or "none"
+    parser.add_argument("--attention_activation", default="none")
     parser.add_argument("--scheduler", default="plateau")
     parser.add_argument("--weight_decay", default=0)
 
     parser.add_argument("--dim_E", default=100)
     parser.add_argument("--constraint_loss_weight", default=0)
 
+    parser.add_argument("--pred_forward", default=3, type=int,
+                        help="number of past steps to recover via backward ODE integration")
+    parser.add_argument("--lagMax", default=3, type=int,
+                        help="maximum lag for attention")
+
     args = parser.parse_args()
 
-    # Set the hyperparameters
     out_folder = args.out_folder
-
-    # Data
 
     input_mouse = [str(mouse) for mouse in args.input_mouse.split('|')]
     input_sessions = [str(mouse) for mouse in args.input_sessions.split('|')]
@@ -57,8 +55,6 @@ if __name__ == "__main__":
     predict_window_size = int(args.predict_window_size)
     batch_size = int(args.batch_size)
 
-    # Model
-
     model_random_seed = int(args.model_random_seed)
     learning_rate = float(args.learning_rate)
 
@@ -68,7 +64,8 @@ if __name__ == "__main__":
 
     dim_E = int(args.dim_E)
     constraint_loss_weight = float(args.constraint_loss_weight)
-
+    pred_forward = int(args.pred_forward)
+    lagMax = int(args.lagMax)
 
     output_path = (
         out_folder
@@ -95,6 +92,10 @@ if __name__ == "__main__":
         + str(dim_E)
         + "_"
         + str(constraint_loss_weight)
+        + "_pf"
+        + str(pred_forward)
+        + "_lag"
+        + str(lagMax)
     )
 
     checkpoint_path = output_path
@@ -108,10 +109,13 @@ if __name__ == "__main__":
         batch_size=batch_size,
     )
 
-    single_model = lagFormer.LagFormerMouse(
+    single_model = lagFormerODE.LagFormerODEMouse(
         model_random_seed=model_random_seed,
         attention_activation=attention_activation,
-        dim_E=dim_E
+        dim_E=dim_E,
+        predict_window_size=predict_window_size,
+        pred_forward=pred_forward,
+        lagMax=lagMax,
     )
 
     es = EarlyStopping(monitor="VAL_loss", patience=20)
@@ -166,36 +170,32 @@ if __name__ == "__main__":
     vmin_KK = -max_abs
     vmax_KK = max_abs
 
-    model_checkpoint_path = checkpoint_path + "/" + listdir(checkpoint_path)[-1]   # get the best checkpoint path
-    # model_checkpoint_path = checkpoint_callback.best_model_path
-    # if not model_checkpoint_path:
-    #     raise RuntimeError("No model checkpoint was saved during training.")
+
+    model_checkpoint_path = checkpoint_callback.best_model_path
+    if not model_checkpoint_path:
+        raise RuntimeError("No model checkpoint was saved during training.")
 
     train_results = trainer.predict(single_model, dataloaders=[train_dataloader], ckpt_path=model_checkpoint_path)
 
-    attentions = []  # list of (N * neuron_num * neuron_num)
-    attentions_by_state = []  # list of (3 * N * neuron_num * neuron_num)
-    all_sessions_avg_attention_NN = []  # list of (neuron_num * neuron_num)
+    attentions = []
+    all_sessions_avg_attention_NN = []
 
     index = 0
     num_session = len(num_batch_per_session_TRAIN)
     for i in range(num_session):
         attentions.append([])
-        # attentions_by_state.append([[], [], []]) # 3 states for each session
 
         for j in range(num_batch_per_session_TRAIN[i]):
             x_hat = train_results[index][0]
             x = train_results[index][1]
             attention = train_results[index][2]  # B * neuron_num * neuron_num
-            state = train_results[index][3].cpu().numpy()   # B * window_size
+            state = train_results[index][3].cpu().numpy()
 
             attentions[i].append(attention)
-
             index += 1
 
-        attentions[i] = torch.cat(attentions[i], dim=0).cpu().numpy()    # N * neuron_num * neuron_num
-        # get average attention across samples in each session
-        all_sessions_avg_attention_NN.append(np.mean(attentions[i], axis=0))   # neuron_num * neuron_num
+        attentions[i] = torch.cat(attentions[i], dim=0).cpu().numpy()
+        all_sessions_avg_attention_NN.append(np.mean(attentions[i], axis=0))
 
 
     # Validation Result
@@ -214,13 +214,13 @@ if __name__ == "__main__":
         for j in range(num_batch_per_session_VAL[i]):
             x_hat = val_results[index][0]
             x = val_results[index][1]
-            
+
             predictions[i].append(x_hat)
             ground_truths[i].append(x)
             index += 1
-        
-        predictions[i] = torch.cat(predictions[i], dim=0).cpu().numpy()  # N * neuron_num * window_size
-        ground_truths[i] = torch.cat(ground_truths[i], dim=0).cpu().numpy()  # N * neuron_num * window_size
+
+        predictions[i] = torch.cat(predictions[i], dim=0).cpu().numpy()
+        ground_truths[i] = torch.cat(ground_truths[i], dim=0).cpu().numpy()
 
     flatten_predictions = [predictions[0].flatten()]
     flatten_ground_truths = [ground_truths[0].flatten()]
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 
     multisession_NN_list = all_sessions_avg_attention_NN
     experiment_KK_strength = tools.multisession_NN_to_KK(
-        multisession_NN_list, 
+        multisession_NN_list,
         cell_type_order,
         all_sessions_new_cell_type_id,
     )

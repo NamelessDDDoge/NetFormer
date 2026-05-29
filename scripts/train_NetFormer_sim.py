@@ -10,6 +10,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from torchmetrics import AUROC
 from sklearn.metrics import r2_score
+from os import listdir
 
 from NetFormer import data, models, tools
 
@@ -202,9 +203,10 @@ if __name__ == "__main__":
     # Evaluate Model Performance
     ############################################################################################################
 
-    model_checkpoint_path = checkpoint_callback.best_model_path
-    if not model_checkpoint_path:
-        raise RuntimeError("No model checkpoint was saved during training.")
+    model_checkpoint_path = checkpoint_path + "/" + listdir(checkpoint_path)[-1]   # get the best checkpoint path
+    # model_checkpoint_path = checkpoint_callback.best_model_path
+    # if not model_checkpoint_path:
+    #     raise RuntimeError("No model checkpoint was saved during training.")
 
     train_results = trainer.predict(single_model, dataloaders=[trainloader], ckpt_path=model_checkpoint_path)
 
