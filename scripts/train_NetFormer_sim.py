@@ -8,7 +8,6 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
-from os import listdir
 from torchmetrics import AUROC
 from sklearn.metrics import r2_score
 
@@ -203,7 +202,10 @@ if __name__ == "__main__":
     # Evaluate Model Performance
     ############################################################################################################
 
-    model_checkpoint_path = checkpoint_path + "/" + listdir(checkpoint_path)[-1]
+    model_checkpoint_path = checkpoint_callback.best_model_path
+    if not model_checkpoint_path:
+        raise RuntimeError("No model checkpoint was saved during training.")
+
     train_results = trainer.predict(single_model, dataloaders=[trainloader], ckpt_path=model_checkpoint_path)
 
     attentions = []

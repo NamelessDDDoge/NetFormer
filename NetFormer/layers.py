@@ -64,3 +64,4 @@ class Attention(nn.Module):
 
         out = out + x   # residual connection
         return out, attn
+    

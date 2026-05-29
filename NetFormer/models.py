@@ -296,7 +296,7 @@ class NetFormer_mouse(Base_mouse):
         scheduler="cycle",
         attention_activation="none", # "softmax" or "sigmoid" or "tanh", "none"
         weight_decay=0,
-        dim_E=30,
+        dim_E=8,
         constraint_loss_weight=0,
     ):
         super().__init__()

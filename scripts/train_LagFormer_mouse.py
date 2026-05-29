@@ -10,7 +10,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from sklearn.metrics import r2_score
 
-from NetFormer import data, models, tools
+from NetFormer import data, tools, lagFormer
 
 
 if __name__ == "__main__":
@@ -107,18 +107,10 @@ if __name__ == "__main__":
         batch_size=batch_size,
     )
 
-    single_model = models.NetFormer_mouse(
-        num_unqiue_neurons=num_unqiue_neurons,
-        num_cell_types=len(cell_type_order),
+    single_model = lagFormer.LagFormerMouse(
         model_random_seed=model_random_seed,
-        window_size=window_size,
-        predict_window_size=predict_window_size,
-        learning_rate=learning_rate,
-        scheduler=scheduler,
         attention_activation=attention_activation,
-        weight_decay=weight_decay,
-        dim_E=dim_E,
-        constraint_loss_weight=constraint_loss_weight,
+        dim_E=dim_E
     )
 
     es = EarlyStopping(monitor="VAL_loss", patience=20)

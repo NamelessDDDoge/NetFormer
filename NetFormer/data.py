@@ -193,8 +193,8 @@ def generate_simulation_data(
     else:
         raise ValueError("model_type should be either 'NetFormer' or 'RNN'.")
 
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, persistent_workers=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, persistent_workers=True)
 
     if data_type == "connectivity_constrained":
 
@@ -396,8 +396,8 @@ def generate_mouse_all_sessions_data(
     num_batch_per_session_TRAIN = train_dataset.num_batch_per_session
     num_batch_per_session_VAL = val_dataset.num_batch_per_session
 
-    train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=num_workers)    # 1 is not real batch_size
-    val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=num_workers)        # 1 is not real batch_size
+    train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=num_workers, persistent_workers=True)    # 1 is not real batch_size
+    val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=num_workers, persistent_workers=True)        # 1 is not real batch_size
 
     return train_dataloader, val_dataloader, num_unqiue_neurons, cell_type_order, all_sessions_new_cell_type_id, num_batch_per_session_TRAIN, num_batch_per_session_VAL, sessions_2_original_cell_type, neuron_id_2_cell_type_id
 
