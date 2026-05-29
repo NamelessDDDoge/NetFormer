@@ -2,6 +2,32 @@
 
 this is a repository forked from https://github.com/NeuroAIHub/NetFormer
 
+## New Methods (This Fork)
+
+### LagFormer on Neural Data
+
+LagFormer replaces the standard attention with **lag attention**: queries from time-shifted (lagged) embeddings attend to keys at the current step, capturing temporal lead-lag dependencies between neurons across multiple time offsets (default `lagMax=3`).
+
+```bash
+cd scripts
+bash train_LagFormer_mouse.sh
+```
+
+### LagFormerODE on Neural Data
+
+LagFormerODE extends LagFormer with a **Neural ODE readout**: after computing a lag-weighted connectivity matrix, it integrates neural dynamics forward (and optionally backward) in embedding space via RK4, then decodes predictions. Learnable per-lag sigmoid gates (`lagFuse`) weight each lag's contribution to the global adjacency matrix.
+
+```bash
+cd scripts
+bash train_LagFormerODE_mouse.sh
+```
+
+Key extra arguments:
+- `--pred_forward`: steps of backward ODE integration used as auxiliary reconstruction targets (default `3`)
+- `--lagMax`: maximum lag considered in attention (default `3`)
+
+---
+
 ## Set up environment
 
 ```bash
@@ -66,28 +92,6 @@ bash train_NetFormer_sim_connectivity_constrained.sh
 cd scripts
 bash train_NetFormer_mouse.sh
 ```
-
-### LagFormer on Neural Data
-
-LagFormer replaces the standard attention with **lag attention**: queries from time-shifted (lagged) embeddings attend to keys at the current step, capturing temporal lead-lag dependencies between neurons across multiple time offsets (default `lagMax=3`).
-
-```bash
-cd scripts
-bash train_LagFormer_mouse.sh
-```
-
-### LagFormerODE on Neural Data
-
-LagFormerODE extends LagFormer with a **Neural ODE readout**: after computing a lag-weighted connectivity matrix, it integrates neural dynamics forward (and optionally backward) in embedding space via RK4, then decodes predictions. Learnable per-lag sigmoid gates (`lagFuse`) weight each lag's contribution to the global adjacency matrix.
-
-```bash
-cd scripts
-bash train_LagFormerODE_mouse.sh
-```
-
-Key extra arguments:
-- `--pred_forward`: steps of backward ODE integration used as auxiliary reconstruction targets (default `3`)
-- `--lagMax`: maximum lag considered in attention (default `3`)
 
 
 ## Baselines
