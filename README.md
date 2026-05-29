@@ -4,6 +4,8 @@ this is a repository forked from https://github.com/NeuroAIHub/NetFormer
 
 ## New Methods (This Fork)
 
+![Lag Attention](Lag%20Attention.svg)
+
 ### LagFormer on Neural Data
 
 LagFormer replaces the standard attention with **lag attention**: queries from time-shifted (lagged) embeddings attend to keys at the current step, capturing temporal lead-lag dependencies between neurons across multiple time offsets (default `lagMax=3`).
